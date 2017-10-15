@@ -1,22 +1,43 @@
 #!/bin/sh
 
-IP=192.168.3.3
+IP=192.168.179.8
 PORT=11111
-URL=https://www.google.co.jp/
+URL=ec2-52-14-83-218.us-east-2.compute.amazonaws.com
 TOKEN=init
 SESSION=
 
-HTTP_RESPONSE=`curl -s ${URL} -o /dev/null -w "%{http_code}\n"`
-if [ ${HTTP_RESPONSE} -eq 200 ]; then
-    echo "OK"
-else
-    echo ${HTTP_RESPONSE}
-fi
+RES=`curl http://${IP}:${PORT}/api/auth/connect?token=${TOKEN}`
 
-#$ curl http://$\{IP\}:$\{PORT\}/api/auth/connect?token=$TOKEN
-RES='{"jtype": "afb-reply","request": {"status": "success","token": "0aef6841-2ddd-436d-b961-ae78da3b5c5f","uuid": "850c4594-1be1-4e9b-9fcc-38cc3e6ff015"},"response": {"token": "A New Token and Session Context Was Created"}'}
+echo ${RES}
 
-TOKEN=`echo $RES | jq .request.token`
-UUID=`echo $RES | jq .request.token`
+TOKEN=`echo $RES | jq -r .request.token`
+UUID=`echo $RES | jq -r .request.uuid`
 
-echo $TOKEN $UUID}
+echo ${TOKEN} ${UUID}
+
+sleep 1
+
+echo “curl http://${IP}:${PORT}/api/auth/check?token=${TOKEN}\&uuid=${UUID}”
+RES=`curl http://${IP}:${PORT}/api/auth/check?token=${TOKEN}\&uuid=${UUID}`
+
+STATUS=`echo $RES | jq .request.status`
+echo ${STATUS}
+
+
+RES=`curl http://${IP}:${PORT}/api/download/download?url=${URL}/test-data.txt\&filename=test\&token=${TOKEN}\&uuid=${UUID}`
+
+echo ${RES}
+
+ID=`echo $RES | jq -r .response.id`
+
+echo ${ID}
+
+PROG=0
+while [ $PROG -lt 100 ]
+do
+    echo “================“
+    RES=`curl http://${IP}:${PORT}/api/download/info?id=${ID}\&token=${TOKEN}\&uuid=${UUID}`
+    echo $RES
+    PROG=`echo $RES | jq -r .response.downloading.progress`
+    echo progress=$PROG
+done
